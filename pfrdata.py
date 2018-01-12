@@ -26,7 +26,7 @@ class PfrData():
         """
         Method that pulls html string and replaces <!-- or --> string with ''
         (this substitution is turning off the comments that
-        are blocking tables to load nicely)
+        are blocking things we need to pull)
         """
         html_text = requests.get(self.url).text
         self.html_text = html_text.replace('<!--', '').replace('-->', '')
