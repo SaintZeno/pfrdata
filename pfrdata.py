@@ -114,9 +114,8 @@ class PfrData():
                 ]
         res.drop([i for i in range(header_row)], inplace=True)
         res.columns = cols
-        if u'player' in res.columns:
-            res[u'player'] = self.slug_str_list(res[u'player'].tolist(),
-                                               include_space=True)
+        for c in res.columns:
+            res[c] = self.slug_str_list(res[c].tolist(), include_space=True)
         self.table_data = {table_id: res}
         if not return_obj:
             res = None
@@ -134,7 +133,7 @@ class PfrData():
         """
         res = []
         for c in cols:
-            if do_slug:
+            if do_slug and (type(c) == str):
                 if include_space:
                     try:
                         c = u"".join(s for s in c if (s.isalnum() or s == ' ')).lower()
@@ -145,7 +144,9 @@ class PfrData():
                         c = u"".join(s for s in c if s.isalnum()).lower()
                     except:
                         print('Couldnt conver string')
-            res.append(u"".join(s for s in c.lower()))
+                res.append(u"".join(s for s in c.lower()))
+            else:
+                res.append(c)
         return (res)
 
 
