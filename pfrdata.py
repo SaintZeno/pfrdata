@@ -108,13 +108,14 @@ class PfrData():
         t = pd.DataFrame([], columns = cols)
         cols = pd.Series(t.columns)
         for d in t.columns.get_duplicates():
+            col_range = range(t.columns.get_loc(d).sum())
             cols[t.columns.get_loc(d)] = [
-                d + '_' + str(d_idx) if d_idx != 0 else d for d_idx in range(t.columns.get_loc(d).sum())
+                u"".join([d, '_', str(d_idx)]) if d_idx != 0 else d for d_idx in col_range
                 ]
         res.drop([i for i in range(header_row)], inplace=True)
         res.columns = cols
-        if 'player' in res.columns:
-            res['player'] = self.slug_str_list(res['player'].tolist(),
+        if u'player' in res.columns:
+            res[u'player'] = self.slug_str_list(res[u'player'].tolist(),
                                                include_space=True)
         self.table_data = {table_id: res}
         if not return_obj:
@@ -125,6 +126,7 @@ class PfrData():
     def slug_str_list(self, cols, include_space = True, do_slug = True):
         """
         Method that converts list of string to alphanumeric and spaces
+        also convers to unicode
         :param cols: list of strings
         :param include_space: bool to include spaces in sting or not
         :param do_slug: bool to actually do the slug
@@ -135,15 +137,15 @@ class PfrData():
             if do_slug:
                 if include_space:
                     try:
-                        c = "".join(s for s in c if (s.isalnum() or s == ' ')).lower()
+                        c = u"".join(s for s in c if (s.isalnum() or s == ' ')).lower()
                     except:
                         print('Couldnt convert string')
                 else:
                     try:
-                        c = "".join(s for s in c if s.isalnum()).lower()
+                        c = u"".join(s for s in c if s.isalnum()).lower()
                     except:
                         print('Couldnt conver string')
-            res.append(c.lower())
+            res.append(u"".join(s for s in c.lower()))
         return (res)
 
 
