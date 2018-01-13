@@ -11,6 +11,6 @@ pfr = PfrData(url)
 pfr.list_tables()
 
 ## Pull 'defense' table from url into a dataframe `defense_df`
-defense_df = pfr.scrape_table('defense', header_row = 2)
+defense_df = pfr.scrape_table('defense', header_row=2, return_obj=True)
 
-defense_df.head()
+pass_df = pfr.scrape_table('passing', header_row=1, return_obj=True)
