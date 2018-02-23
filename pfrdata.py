@@ -10,9 +10,9 @@ import pandas as pd
 
 class PfrData():
     """
-    Class that will pull pro-football reference data using any given url
+    Class that will pull pro-football-reference (pfr) data using any given prf url
     example usage:
-    pfr = PullPfrData(url_string = url)
+    pfr = PullPfrData(url_string = 'https://www.pro-football-reference.com/teams/sfo/2017.htm')
     pfr.list_tables()
     hold = pfr.scrape_table('defense', 2) ## df of table data
     """
@@ -77,7 +77,7 @@ class PfrData():
         return(None)
 
 
-    def scrape_table(self, table_id, header_row=2, return_obj = False):
+    def scrape_table(self, table_id, header_row=2, return_obj = True):
         """
         Method that scrapes a table that's obtained by self.list_tables().
         Must run self.list_tables before running this method else error.
@@ -114,13 +114,13 @@ class PfrData():
         self.table_data = {table_id: res}
         if not return_obj:
             res = None
-        return (res)
+        return(res)
 
 
     def slug_str_list(self, cols, include_space = True, do_slug = True):
         """
         Method that converts list of string to alphanumeric and spaces
-        also convers to unicode
+        also convers to unicode.. I could use slugify module but not a huge fan of that.
         :param cols: list of strings to iterated over
         :param include_space: boolean to include spaces in string or not
         :param do_slug: boolean to actually do the slug
@@ -132,17 +132,17 @@ class PfrData():
                 if include_space:
                     try:
                         c = u"".join(s for s in c if (s.isalnum() or s == ' ')).lower()
-                    except:
-                        print('Couldnt convert string')
+                    except Exception as e:
+                        raise Exception('Couldnt convert string -- ' + str(e))
                 else:
                     try:
                         c = u"".join(s for s in c if s.isalnum()).lower()
-                    except:
-                        print('Couldnt convert string')
+                    except Exception as e:
+                        raise Exception('Couldnt convert string -- ' + str(e))
                 res.append(u"".join(s for s in c.lower()))
             else:
                 res.append(c)
-        return (res)
+        return(res)
 
 
 
