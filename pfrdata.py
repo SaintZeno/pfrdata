@@ -4,13 +4,13 @@
 import requests
 import bs4
 import pandas as pd
-## may need to pip install lxml
+# may need to pip install lxml
 
 
 
 class PfrData():
     """
-    Class that will pull pro-football focus data using any given url
+    Class that will pull pro-football reference data using any given url
     example usage:
     pfr = PullPfrData(url_string = url)
     pfr.list_tables()
@@ -32,7 +32,7 @@ class PfrData():
         """
         html_text = requests.get(self.url).text
         self.html_text = html_text.replace('<!--', '').replace('-->', '')
-        # print(self.html_text)
+        return(None)
 
 
     def list_tables(self):
@@ -42,9 +42,7 @@ class PfrData():
         soup = bs4.BeautifulSoup(self.html_text, 'lxml')
         tab_w_id = soup.findAll('table', {'id': True})
         self.table_ids = [i['id'] for i in tab_w_id]
-        return (self.table_ids)
-
-
+        return(self.table_ids)
 
 
     def check_scrape_table_args(self, table_id, header_row, return_obj):
@@ -61,11 +59,11 @@ class PfrData():
         """
 
         if self.table_ids is None:
-            raise Exception('Please run `PullPfrData.list_tables()` before you run this method')
+            raise Exception('Please run `PfrData.list_tables()` before you run this method')
 
         if table_id not in self.table_ids:
             msg = 'Table id `{}` is not an available table.'.format(table_id)
-            msg += ' Run `PullPfrData.list_tables()` to see list of tables.'
+            msg += ' Run `PfrData.list_tables()` to see list of tables.'
             raise Exception(msg)
 
         if type(table_id) != str:
@@ -76,10 +74,7 @@ class PfrData():
 
         if type(return_obj) != bool:
             raise Exception('Please input a boolean for the return (object return_obj)')
-        pass
-
-
-
+        return(None)
 
 
     def scrape_table(self, table_id, header_row=2, return_obj = False):
@@ -126,9 +121,9 @@ class PfrData():
         """
         Method that converts list of string to alphanumeric and spaces
         also convers to unicode
-        :param cols: list of strings
-        :param include_space: bool to include spaces in sting or not
-        :param do_slug: bool to actually do the slug
+        :param cols: list of strings to iterated over
+        :param include_space: boolean to include spaces in string or not
+        :param do_slug: boolean to actually do the slug
         :return: slugged string list
         """
         res = []
@@ -143,7 +138,7 @@ class PfrData():
                     try:
                         c = u"".join(s for s in c if s.isalnum()).lower()
                     except:
-                        print('Couldnt conver string')
+                        print('Couldnt convert string')
                 res.append(u"".join(s for s in c.lower()))
             else:
                 res.append(c)
