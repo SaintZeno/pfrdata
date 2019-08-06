@@ -92,11 +92,14 @@ class PfrData():
         soup_rows = soup_table.findAll('tr')
         res = []
         for i in soup_rows:
-            res.append([x.getText() for x in i.findAll(['th', 'td'])])
+            subres = self._str_to_num([x.getText() for x in i.findAll(['th', 'td'])])
+            has_link = i.findAll('a')
+            if has_link:
+                subres.extend([x['href'] for x in i.findAll('a')])
+            res.append(subres)
         res = pd.DataFrame(res)
-        for c in res.keys():
-            res[c] = pd.to_numeric(res[c], errors = 'ignore')
         cols = res.loc[header_row - 1].tolist()
+        cols = [i if i else 'linkcol' for i in cols]
         cols = self.slug_str_list(cols, include_space=False)
         ## hacky way to count duplicate columns and then append occurence # to the string
         ## there's def a better way to do this w/ lists and arrays...
@@ -104,17 +107,19 @@ class PfrData():
         cols = pd.Series(t.columns)
         for d in t.columns.get_duplicates():
             col_range = range(t.columns.get_loc(d).sum())
-            cols[t.columns.get_loc(d)] = [
+            cols.loc[t.columns.get_loc(d)] = [
                 u"".join([d, '_', str(d_idx)]) if d_idx != 0 else d for d_idx in col_range
                 ]
         res.drop([i for i in range(header_row)], inplace=True)
         res.columns = cols
-        for c in res.columns:
-            res[c] = self.slug_str_list(res[c].tolist(), include_space=True)
+        #for c in res.columns:
+        #    res[c] = pd.to_numeric(res[c], errors='ignore')
+        #    res[c] = self.slug_str_list(res[c].tolist(), include_space=True)
         self.table_data = {table_id: res}
         if not return_obj:
             res = None
         return(res)
+
 
 
     def slug_str_list(self, cols, include_space = True, do_slug = True):
@@ -145,4 +150,14 @@ class PfrData():
         return(res)
 
 
-
+    def _str_to_num(self, n_list):
+        """
+        Helper Method that converts list strings to numbers
+        """
+        res = []
+        for n in n_list:
+            try:
+                res.append(float(n))
+            except:
+                res.append(n)
+        return(res)
