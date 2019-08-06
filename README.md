@@ -14,3 +14,4 @@ There are two main methods to use once a `PfrData` object is created:
 
 ## see sample main file for example usage ##
 
+`cfb_scrape.py` will scrape sports-reference CFB data to pull passing, rushing & recieving, and team total data for all cfb players in `desired_year`
