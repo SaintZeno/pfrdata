@@ -5,6 +5,7 @@ import requests
 import bs4
 import pandas as pd
 # may need to pip install lxml
+import time
 
 
 
@@ -18,6 +19,9 @@ class PfrData():
     """
 
     def __init__(self, url_string):
+        ## no more than 20 requests in 60s.
+        ## or 1 per 3s
+        time.sleep(5)
         self.url = url_string
         self.set_html()
         self.table_ids = None
@@ -105,11 +109,13 @@ class PfrData():
         ## there's def a better way to do this w/ lists and arrays...
         t = pd.DataFrame([], columns = cols)
         cols = pd.Series(t.columns)
-        for d in t.columns.get_duplicates():
-            col_range = range(t.columns.get_loc(d).sum())
-            cols.loc[t.columns.get_loc(d)] = [
-                u"".join([d, '_', str(d_idx)]) if d_idx != 0 else d for d_idx in col_range
-                ]
+        for dup in cols[cols.duplicated()].unique():
+            cols[cols[cols == dup].index.values.tolist()] = [dup + '.' + str(i) if i != 0 else dup for i in range(sum(cols == dup))]
+        #for d in t.columns.get_duplicates():
+        #    col_range = range(t.columns.get_loc(d).sum())
+        #    cols.loc[t.columns.get_loc(d)] = [
+        #        u"".join([d, '_', str(d_idx)]) if d_idx != 0 else d for d_idx in col_range
+        #        ]
         res.drop([i for i in range(header_row)], inplace=True)
         res.columns = cols
         #for c in res.columns:

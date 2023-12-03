@@ -8,13 +8,15 @@ from pfrdata import PfrData
 base_url = 'https://www.sports-reference.com'
 cfb_url = base_url + '/cfb'
 all_schools_page_url = cfb_url + '/schools'
-desired_year = 2018
+desired_year = 2022
 
 
 
 ## pull list of schools
 pfr = PfrData(all_schools_page_url)
 table_names = pfr.list_tables()
+#print(f'tables on page {all_schools_page_url}: {table_names}')
+#print(f'html on page: {pfr.html_text}')
 df = pfr.scrape_table('schools', header_row=2, return_obj=True)
 
 df.columns = [str(i).lower() for i in df.columns] ## lowercase columns
@@ -23,11 +25,12 @@ df.columns = [str(i).lower() for i in df.columns] ## lowercase columns
 df = df[~(df.school.isin(['Overall', 'School', 'overall', 'school']))]
 
 ## filter down to schools who go thru `desired_year`
-print(df.keys())
+#print(df.keys())
 ind1 = pd.to_numeric(df['to']) >= desired_year
 ind2 = pd.to_numeric(df['from']) <= desired_year
 
 df = df[ind1 & ind2]
+
 
 ## generate list of school links to grab from
 schools_page_url = df[['school', 'linkcol']].to_dict(orient='records')
@@ -42,8 +45,29 @@ tables = ['passing', 'rushing_and_receiving', 'team']
 res = {}
 
 ## iterate thru list of schools and store data
-for x in schools_page_url:
-    print(x['school'])
+for i in range(len(schools_page_url)):
+    x = schools_page_url[i]
+    print(f"school {x['school']}")
+    ## scrape team history page to get conference and wins/losses
+    pfr = PfrData(base_url + x['linkcol'])
+    table_names = pfr.list_tables()
+    if len(table_names)>1:
+        msg = f'unexpected number of tables returned for school {x["school"]}'
+        msg += '\n check url: {base_url + x["linkcol"]}'
+        raise Exception(msg)
+    #print(f"table_names: {table_names}")
+    school_stats_df = pfr.scrape_table(table_names[0],
+                                     header_row=2,
+                                    return_obj=True)
+    ## process pd table so we can easily join with other dfs.
+    school_stats_df['school'] = str(x['school'])
+    school_stats_df.school = school_stats_df.school.astype(str)
+    school_stats_df.year  = [i.replace('*', '').replace('.0', '') for i in school_stats_df.year.astype(str)]
+    school_stats_df = school_stats_df.loc[school_stats_df.year==str(desired_year)]
+    school_stats_df = school_stats_df.loc[:,['school', 'conf', 'w', 'l']]
+    school_stats_df.rename({'w':'overall_wins', 'l':'overall_losses', 'conf': 'conference'}, inplace=True, axis='columns')
+
+    ## now we scrape the team yearly stats page with player data
     pfr = PfrData(base_url + x['linkcol'] + str(desired_year) + '.html')
     table_names = pfr.list_tables()
     ## make sure all expected tables appear
@@ -56,8 +80,16 @@ for x in schools_page_url:
     for t_name in tables:
         print(t_name)
         subres = pfr.scrape_table(t_name, header_row=2, return_obj=True)
-        subres['school'] = x['school']
+        ## ok, pandas is so bad it can't figure out column types?????????
+
+        subres['school'] = str(x['school'])
+        subres['school'] = subres['school'].astype(str)
+
         subres['pfr_school_link'] = x['linkcol']
+
+        ## join subres and school_stats_df
+        subres = pd.merge(subres, school_stats_df, how = 'left', on = ['school'])
+
         if 'linkcol' in subres.keys():
             subres['pfr_player_link'] = subres['linkcol']
         if t_name not in res.keys():
@@ -65,13 +97,15 @@ for x in schools_page_url:
         else:
             res[t_name] = pd.concat([res[t_name], subres], ignore_index=True)
 
+    print(f'iteration {i+1} of {len(schools_page_url)} complete. Percent complete: {100*(i+1)/len(schools_page_url):.2f}%')
+
 
 ## format each table so the column names are.... good
 passing_name_dict = {'cmp': 'passing_cmp', 'att': 'passing_att', 'pct': 'passing_cmp_pct',
                      'yds': 'passing_yards', 'ya': 'ypa', 'aya':'aypa', 'td': 'passing_td',
                      'rate': 'passer_rating'}
 
-passing_name_dict = {unicode(k): v for k, v in passing_name_dict.items()}
+passing_name_dict = {str(k): v for k, v in passing_name_dict.items()}
 
 
 r_n_r_name_dict = {'att': 'rush_att', 'yds': 'rush_yards', 'avg': 'rush_ypc',
@@ -79,7 +113,7 @@ r_n_r_name_dict = {'att': 'rush_att', 'yds': 'rush_yards', 'avg': 'rush_ypc',
                    'td_1': 'rec_td', 'plays': 'number_of_plays',
                    'yds_2': 'total_yards', 'avg_2': 'total_ypt', 'td_2': 'total_td'}
 
-r_n_r_name_dict = {unicode(k): v for k, v in r_n_r_name_dict.items()}
+r_n_r_name_dict = {str(k): v for k, v in r_n_r_name_dict.items()}
 
 team_name_dict = { 'cmp': 'passing_cmp', 'att': 'passing_att',
                    'pct': 'passing_cmp_pct', 'yds': 'passing_yards',
@@ -97,6 +131,8 @@ rename_dict = {'rushing_and_receiving': r_n_r_name_dict,
                'passing': passing_name_dict,
                'team': team_name_dict}
 
+
+## now we loop thru each table type and grab the player class info
 for k,v in res.items():
     print(k)
     if k in rename_dict.keys():
@@ -109,7 +145,9 @@ for k,v in res.items():
     player_links = []
     if 'pfr_player_link' in res[k].keys():
         player_links = res[k].pfr_player_link.unique()
-    for p in [i for i in player_links if i]:
+    player_links = [i for i in player_links if i]
+    for i in range(len(player_links)):
+        p = player_links[i]
         print(p)
         pfr = PfrData(base_url + p)
         table_names = pfr.list_tables()
@@ -122,7 +160,10 @@ for k,v in res.items():
         res[k].loc[res[k].pfr_player_link == p, 'games'] = games[0]
         p_class = subres.loc[subres.year.astype(str) == str(desired_year), 'class'].tolist()
         res[k].loc[res[k].pfr_player_link == p, 'class'] = p_class[0]
+        print(f'iteration {i+1} of {len(player_links)} complete for {k}. Percent complete: {100*(i+1)/len(player_links):.2f}% for {k}')
 
+
+## write to disk!!
 for k, v in res.items():
     fs = '_'.join(['pfr', 'cfb', k, str(desired_year)])
     v.to_csv(fs + '.csv', index=False)
