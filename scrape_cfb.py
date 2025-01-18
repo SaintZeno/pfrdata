@@ -37,7 +37,7 @@ df = df[ind1 & ind2]
 schools_page_url = df[['school', 'linkcol']].to_dict(orient='records')
 
 ## uncomment to test on singular school
-schools_page_url = [schools_page_url[0]]
+#schools_page_url = [schools_page_url[0]]
 
 ## list of expected table names
 tables = ['passing_standard', 'rushing_standard', 'team']
