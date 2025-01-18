@@ -2,13 +2,14 @@ import requests
 import bs4
 import pandas as pd
 from pfrdata import PfrData
+import time
 
 
 
 base_url = 'https://www.sports-reference.com'
 cfb_url = base_url + '/cfb'
 all_schools_page_url = cfb_url + '/schools'
-desired_year = 2022
+desired_year = 2024
 
 
 
@@ -35,11 +36,11 @@ df = df[ind1 & ind2]
 ## generate list of school links to grab from
 schools_page_url = df[['school', 'linkcol']].to_dict(orient='records')
 
-## list of expected table names
-tables = ['team', 'passing', 'rushing_and_receiving',
-          'defense_and_fumbles', 'returns', 'kicking_and_punting', 'scoring']
+## uncomment to test on singular school
+schools_page_url = [schools_page_url[0]]
 
-tables = ['passing', 'rushing_and_receiving', 'team']
+## list of expected table names
+tables = ['passing_standard', 'rushing_standard', 'team']
 ## initiate result object
 #res = {i: [] for i in tables}
 res = {}
@@ -56,6 +57,12 @@ for i in range(len(schools_page_url)):
         msg += '\n check url: {base_url + x["linkcol"]}'
         raise Exception(msg)
     #print(f"table_names: {table_names}")
+    if len(table_names) == 0:
+        # ...... hmmmm why table_names are 0?
+        print(f"no tables found, trying again: {base_url + x['linkcol']}")
+        time.sleep(3)
+        pfr = PfrData(base_url + x['linkcol'])
+        table_names = pfr.list_tables()
     school_stats_df = pfr.scrape_table(table_names[0],
                                      header_row=2,
                                     return_obj=True)
@@ -72,7 +79,8 @@ for i in range(len(schools_page_url)):
     table_names = pfr.list_tables()
     ## make sure all expected tables appear
     if not(all([i in table_names for i in tables])):
-        print('missing a table for school {0} and url {1} !!'.format(x['school'], x['linkcol']))
+        print('`missing a table` for school {0} and url {1} !!'.format(x['school'], x['linkcol']))
+        print(f'available tables: {table_names}')
         continue
     ## pluck tables and append to res
     table_names = [i for i in table_names if i not in tables]
@@ -127,18 +135,18 @@ team_name_dict = { 'cmp': 'passing_cmp', 'att': 'passing_att',
                    'fum': 'fum_lost', 'tot_1': 'total_turnovers'}
 
 
-rename_dict = {'rushing_and_receiving': r_n_r_name_dict,
-               'passing': passing_name_dict,
+rename_dict = {'rushing_standard': r_n_r_name_dict,
+               'passing_standard': passing_name_dict,
                'team': team_name_dict}
 
-
+bad_data = []
 ## now we loop thru each table type and grab the player class info
 for k,v in res.items():
-    print(k)
+    print(f'post processing: {k}')
     if k in rename_dict.keys():
         res[k].rename(rename_dict[k], inplace=True, axis='columns')
     if 'year' in res[k].keys():
-        res[k].year = [i.replace('*', '').replace('.0', '') for i in res[k].year.astype(str)]
+        res[k].year = [i.replace('*', '').replace('.0', '') for i in res[k]['year'].astype(str)]
     res[k]['pos'] = 'NA'
     res[k]['games'] = 0
     res[k]['class'] = 'NA'
@@ -146,13 +154,29 @@ for k,v in res.items():
     if 'pfr_player_link' in res[k].keys():
         player_links = res[k].pfr_player_link.unique()
     player_links = [i for i in player_links if i]
+    # uncomment for testing
+    #print(player_links)
+    #player_links = [player_links[0]]
     for i in range(len(player_links)):
         p = player_links[i]
         print(p)
         pfr = PfrData(base_url + p)
         table_names = pfr.list_tables()
-        subres = pfr.scrape_table(table_names[0], header_row=2, return_obj=True)
-        subres.year = [i.replace('*', '').replace('.0', '') for i in subres.year.astype(str)]
+        tab = [i for i in table_names if i in k]
+        if len(tab) == 0:
+            time.sleep(5)
+            pfr = PfrData(base_url + p)
+            table_names = pfr.list_tables()
+            tab = [i for i in table_names if i in k]
+        if len(tab) == 0:
+            ## ok, should really be writing to db for the actual fix.
+            ## temp fix: if we can't puull the data then juust skip
+            ## could also fill in dummy values for these rows too.
+            bad_data.append(p)
+            continue
+        subres = pfr.scrape_table(tab[0], header_row=2, return_obj=True)
+        ## print subres
+        subres['year'] = [i.replace('*', '').replace('.0', '') for i in subres.season.astype(str)]
         pos = subres.pos[subres.year.astype(str) == str(desired_year)].tolist()
         pos = ', '.join(pos)
         res[k].loc[res[k].pfr_player_link == p, 'pos'] = pos
@@ -167,3 +191,5 @@ for k,v in res.items():
 for k, v in res.items():
     fs = '_'.join(['pfr', 'cfb', k, str(desired_year)])
     v.to_csv(fs + '.csv', index=False)
+
+print(bad_data)

@@ -21,7 +21,7 @@ class PfrData():
     def __init__(self, url_string):
         ## no more than 20 requests in 60s.
         ## or 1 per 3s
-        time.sleep(5)
+        time.sleep(6)
         self.url = url_string
         self.set_html()
         self.table_ids = None
@@ -110,7 +110,7 @@ class PfrData():
         t = pd.DataFrame([], columns = cols)
         cols = pd.Series(t.columns)
         for dup in cols[cols.duplicated()].unique():
-            cols[cols[cols == dup].index.values.tolist()] = [dup + '.' + str(i) if i != 0 else dup for i in range(sum(cols == dup))]
+            cols[cols[cols == dup].index.values.tolist()] = [str(dup) + '.' + str(i) if i != 0 else dup for i in range(sum(cols == dup))]
         #for d in t.columns.get_duplicates():
         #    col_range = range(t.columns.get_loc(d).sum())
         #    cols.loc[t.columns.get_loc(d)] = [

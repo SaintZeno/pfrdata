@@ -1,4 +1,5 @@
-requests==2.18.4
-bs4==4.6.0
-pandas==0.18.1
+requests
+bs4
+pandas
 lxml
+urllib3
